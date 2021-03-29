@@ -1,0 +1,24 @@
+create or replace table "filter_true" as
+(select * from "ads_listing_latest_values"
+where "lf_current_stock"='true');
+
+create or replace table "table_description" as
+(select a."source_name",a."source_specific_car_hash",a."description"
+from "ad_car_pivoted_remapped" a
+join "filter_true" b
+on a."source_name"=b."source_name" and a."source_specific_car_hash"=b."source_specific_car_hash"
+);
+
+create or replace table "autoscout24" as (select * from "table_description" where "source_name"='autoscout24' and "description"<>'');
+
+create or replace table "autoscout24_1st_table" as
+(select  distinct "source_name", "source_specific_car_hash",
+replace(lower(REGEXP_REPLACE("description", '[^0-9A-Za-z]', ' ')),'\n',' ') as "stand_description"
+from "autoscout24");
+
+create or replace table "autoscout24_2nd_table" as
+(select "source_name", "source_specific_car_hash",
+c.value::string as "descr_split"
+from "autoscout24_1st_table",
+lateral flatten(input=>split("stand_description", ' ')) c
+where len("descr_split")>1);
